@@ -1,5 +1,6 @@
 from migit.core import init
 from migit.core import agregar_archivo
+from migit.core import hacer_commit
 import argparse
 
 
@@ -33,7 +34,7 @@ def main():
         case "add":
             agregar_archivo(args.file)
         case "commit":
-            print("El comando 'commit' no ha sido implementado todavía.")
+            hacer_commit(args.message)
 
 
 if __name__ == "__main__":

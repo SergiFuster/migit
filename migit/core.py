@@ -1,10 +1,12 @@
 import os
 from migit.utils import hide
 import hashlib
-
+import json
+import time
 MIGIT_DIR = ".migit"
 OBJECTS_DIR = os.path.join(MIGIT_DIR, "objects")
 INDEX_FILE = os.path.join(MIGIT_DIR, "index")
+HEAD_FILE = os.path.join(MIGIT_DIR, "HEAD")
 
 
 def init():
@@ -38,12 +40,8 @@ def guardar_objeto(contenido, nombre):
 
 
 def actualizar_index(ruta_archivo, hash_objeto):
-    index = {}
-    if os.path.exists(INDEX_FILE):
-        with open(INDEX_FILE, "r") as f:
-            for linea in f:
-                archivo, objeto = linea.strip().split(" ")
-                index[archivo] = objeto
+    
+    index = get_index()
     index[ruta_archivo] = hash_objeto
 
     with open(INDEX_FILE, "w") as f:
@@ -52,6 +50,15 @@ def actualizar_index(ruta_archivo, hash_objeto):
 
     print(f"Archivo {ruta_archivo} agregado al índice con hash {hash_objeto}.")
 
+
+def get_index():
+    index = {}
+    if os.path.exists(INDEX_FILE):
+        with open(INDEX_FILE, "r") as f:
+            for linea in f:
+                archivo, objeto = linea.strip().split(" ")
+                index[archivo] = objeto
+    return index
 
 def agregar_archivo(ruta_archivo):
     if not os.path.exists(ruta_archivo):
@@ -66,3 +73,30 @@ def agregar_archivo(ruta_archivo):
     guardar_objeto(contenido, hash_objeto)
 
     actualizar_index(ruta_archivo, hash_objeto)
+
+def hacer_commit(mensaje):
+    index = get_index()
+
+    if not index:
+        print("No hay archivos en el indice.")
+        return
+
+    snapshot = {
+        "archivos" : index,
+        "timestamp" : int(time.time()),
+        "mensaje" : mensaje
+    }
+
+    snapshot_serializado = json.dumps(snapshot, sort_keys=True).encode()
+
+    hash_commit = hash_archivo(snapshot_serializado)
+
+    os.makedirs(OBJECTS_DIR, exist_ok=True)
+    commit_path = os.path.join(OBJECTS_DIR, hash_commit)
+    with open(commit_path, "wb") as f:
+        f.write(snapshot_serializado)
+
+    with open(HEAD_FILE, "w") as f:
+        f.write(hash_commit)
+
+    print(f"Commit creado {hash_commit[:7]} - {mensaje}")
